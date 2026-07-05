@@ -1,0 +1,20 @@
+# Xcelium/Verisium generated files
+sim/xcelium.d/
+sim/ida/
+sim/.verisium_debug_auto_save/
+sim/verisium_debug_logs/
+sim/axi_crossbar_test_*/
+sim/*.log
+sim/*.history
+sim/*.key
+sim/*.shm/
+sim/*.fsdb
+sim/*.vcd
+
+# Editor and OS files
+*.swp
+*~
+.DS_Store
+
+# Unused generator leftovers (AHB/APB example sequences)
+uvm/sequences/src/sequence/
