@@ -11,8 +11,13 @@ class axi_crossbar_test_vseqr extends uvm_sequencer#(uvm_sequence_item, uvm_sequ
   //-------------------------------------------------------------------------
   // VIP sequencers (from Testbench.cdn_vip)
   //-------------------------------------------------------------------------
+`ifdef AXI_VIP_SVT
+  svt_axi_master_sequencer m_axi_mst_seqr_h[`AXI_MST_AGENT_NUM];
+  svt_axi_slave_sequencer m_axi_slv_seqr_h[`AXI_SLV_AGENT_NUM];
+`else
   cdnAxiUvmSequencer m_axi_mst_seqr_h[`AXI_MST_AGENT_NUM];
   cdnAxiUvmSequencer m_axi_slv_seqr_h[`AXI_SLV_AGENT_NUM];
+`endif
   //-------------------------------------------------------------------------
   // Project agents' sequencers (from Testbench.Agents)
   //-------------------------------------------------------------------------

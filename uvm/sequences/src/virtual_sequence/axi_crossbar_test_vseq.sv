@@ -21,8 +21,8 @@ class axi_crossbar_test_vseq extends axi_crossbar_test_base_vseq;
     string scenario_name
   );
   extern virtual function void check_readback(
-    denaliCdn_axiTransaction wr_rsp,
-    denaliCdn_axiTransaction rd_rsp,
+    axi_vip_transaction_t wr_rsp,
+    axi_vip_transaction_t rd_rsp,
     string scenario_name
   );
 
@@ -34,9 +34,9 @@ endfunction : new
 
 task axi_crossbar_test_vseq::body();
   const reg [7:0] same_length = 4;
-  const denaliCdn_axiTransferSizeT same_size = DENALI_CDN_AXI_TRANSFERSIZE_WORD;
-  const denaliCdn_axiBurstKindT same_kind = DENALI_CDN_AXI_BURSTKIND_INCR;
-  const denaliCdn_axiSecureModeT same_secure = DENALI_CDN_AXI_SECUREMODE_NONSECURE;
+  const axi_vip_size_t same_size = `AXI_VIP_SIZE_WORD;
+  const axi_vip_burst_t same_kind = `AXI_VIP_BURST_INCR;
+  const axi_vip_secure_t same_secure = `AXI_VIP_NONSECURE;
   axi_crossbar_axi_blocking_write_seq warmup_wr_seq;
   axi_crossbar_axi_blocking_read_seq warmup_rd_seq;
 
@@ -85,9 +85,9 @@ task axi_crossbar_test_vseq::run_master_rw_check(
   axi_crossbar_axi_blocking_write_seq wr_seq;
   axi_crossbar_axi_blocking_read_seq rd_seq;
   const reg [7:0] same_length = 4;
-  const denaliCdn_axiTransferSizeT same_size = DENALI_CDN_AXI_TRANSFERSIZE_WORD;
-  const denaliCdn_axiBurstKindT same_kind = DENALI_CDN_AXI_BURSTKIND_INCR;
-  const denaliCdn_axiSecureModeT same_secure = DENALI_CDN_AXI_SECUREMODE_NONSECURE;
+  const axi_vip_size_t same_size = `AXI_VIP_SIZE_WORD;
+  const axi_vip_burst_t same_kind = `AXI_VIP_BURST_INCR;
+  const axi_vip_secure_t same_secure = `AXI_VIP_NONSECURE;
 
   wr_seq = axi_crossbar_axi_blocking_write_seq::type_id::create(
     $sformatf("%s_wr_seq", scenario_name)
@@ -170,10 +170,23 @@ task axi_crossbar_test_vseq::run_blocking_read_with_timeout(
 endtask
 
 function void axi_crossbar_test_vseq::check_readback(
-  denaliCdn_axiTransaction wr_rsp,
-  denaliCdn_axiTransaction rd_rsp,
+  axi_vip_transaction_t wr_rsp,
+  axi_vip_transaction_t rd_rsp,
   string scenario_name
 );
+`ifdef AXI_VIP_SVT
+  if (wr_rsp.data.size() != rd_rsp.data.size()) begin
+    `uvm_fatal(get_name(), $sformatf("%s data size mismatch: wr=%0d rd=%0d",
+      scenario_name, wr_rsp.data.size(), rd_rsp.data.size()))
+  end
+  foreach (rd_rsp.data[i]) begin
+    if (rd_rsp.data[i][`AXI_CROSSBAR_DATA_WIDTH-1:0] !=
+        wr_rsp.data[i][`AXI_CROSSBAR_DATA_WIDTH-1:0])
+      `uvm_fatal(get_name(), $sformatf("%s readback mismatch at beat %0d", scenario_name, i))
+  end
+  `uvm_info(get_name(), $sformatf("%s readback matched %0d beats", scenario_name,
+    rd_rsp.data.size()), UVM_LOW)
+`else
   if (wr_rsp.Data.size() != rd_rsp.Data.size()) begin
     `uvm_fatal(get_name(),
       $sformatf("%s data size mismatch: wr=%0d rd=%0d",
@@ -195,4 +208,5 @@ function void axi_crossbar_test_vseq::check_readback(
   `uvm_info(get_name(),
     $sformatf("%s readback matched %0d bytes", scenario_name, rd_rsp.Data.size()),
     UVM_LOW)
+`endif
 endfunction

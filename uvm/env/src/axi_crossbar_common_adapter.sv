@@ -33,6 +33,7 @@ virtual class axi_crossbar_common_adapter extends uvm_object;
   );
 endclass
 
+`ifndef AXI_VIP_SVT
 class axi_crossbar_cdn_axi_common_adapter extends axi_crossbar_common_adapter;
   `uvm_object_utils(axi_crossbar_cdn_axi_common_adapter)
 
@@ -162,3 +163,98 @@ class axi_crossbar_cdn_axi_common_adapter extends axi_crossbar_common_adapter;
     end
   endfunction
 endclass
+`else
+class axi_crossbar_svt_axi_common_adapter extends axi_crossbar_common_adapter;
+  `uvm_object_utils(axi_crossbar_svt_axi_common_adapter)
+
+  function new(string name = "axi_crossbar_svt_axi_common_adapter");
+    super.new(name);
+  endfunction
+
+  function axi_crossbar_common_status_e convert_status(svt_axi_transaction::resp_type_enum response);
+    case (response)
+      svt_axi_transaction::OKAY:   return AXI_COMMON_STATUS_OKAY;
+      svt_axi_transaction::EXOKAY: return AXI_COMMON_STATUS_EXOKAY;
+      svt_axi_transaction::SLVERR: return AXI_COMMON_STATUS_SLVERR;
+      svt_axi_transaction::DECERR: return AXI_COMMON_STATUS_DECERR;
+      default:                     return AXI_COMMON_STATUS_UNKNOWN;
+    endcase
+  endfunction
+
+  function bit [63:0] get_beat_address(svt_axi_transaction tr, int unsigned beat,
+                                       int unsigned bytes_per_beat);
+    bit [63:0] wrap_bytes;
+    bit [63:0] wrap_base;
+    case (tr.burst_type)
+      svt_axi_transaction::FIXED: return tr.addr;
+      svt_axi_transaction::WRAP: begin
+        wrap_bytes = tr.burst_length * bytes_per_beat;
+        wrap_base = (tr.addr / wrap_bytes) * wrap_bytes;
+        return wrap_base + ((tr.addr - wrap_base + beat * bytes_per_beat) % wrap_bytes);
+      end
+      default: return tr.addr + beat * bytes_per_beat;
+    endcase
+  endfunction
+
+  virtual function void convert(uvm_object protocol_tr,
+      axi_crossbar_common_adapter_context ctx,
+      ref axi_crossbar_common_transaction result[$]);
+    svt_axi_transaction tr;
+    axi_crossbar_common_transaction common_tr;
+    int unsigned bytes_per_beat;
+    int unsigned bus_bytes;
+    int unsigned lane;
+    bit [63:0] beat_address;
+    bit [63:0] id_mask;
+    bit byte_enabled;
+
+    result.delete();
+    if (!$cast(tr, protocol_tr)) begin
+      `uvm_error(get_type_name(), "protocol transaction is not svt_axi_transaction")
+      return;
+    end
+    bytes_per_beat = 1 << int'(tr.burst_size);
+    bus_bytes = ctx.data_width / 8;
+    id_mask = (64'h1 << ctx.original_id_width) - 1;
+    for (int unsigned beat = 0; beat < tr.burst_length; beat++) begin
+      if (beat >= tr.data.size()) begin
+        `uvm_error(get_type_name(), "SVT AXI data array is shorter than burst_length")
+        return;
+      end
+      beat_address = get_beat_address(tr, beat, bytes_per_beat);
+      for (int unsigned byte_in_beat = 0; byte_in_beat < bytes_per_beat; byte_in_beat++) begin
+        lane = (beat_address + byte_in_beat) % bus_bytes;
+        byte_enabled = (tr.xact_type != svt_axi_transaction::WRITE) ||
+                       (beat < tr.wstrb.size() && tr.wstrb[beat][lane]);
+        if (!byte_enabled)
+          continue;
+        common_tr = axi_crossbar_common_transaction::type_id::create(
+          $sformatf("common_b%0d_byte%0d", beat, byte_in_beat));
+        common_tr.access = (tr.xact_type == svt_axi_transaction::WRITE) ?
+                           AXI_COMMON_WRITE : AXI_COMMON_READ;
+        common_tr.address = beat_address + byte_in_beat;
+        common_tr.data = tr.data[beat][lane*8 +: 8];
+        common_tr.source_port = ctx.source_port;
+        common_tr.dest_port = ctx.dest_port;
+        common_tr.transaction_id = tr.id & id_mask;
+        common_tr.beat_index = beat;
+        common_tr.byte_index = byte_in_beat;
+        common_tr.source_protocol = "SVT_AXI";
+        common_tr.valid_mask = axi_crossbar_common_transaction::CMP_ACCESS |
+          axi_crossbar_common_transaction::CMP_ADDR | axi_crossbar_common_transaction::CMP_DATA |
+          axi_crossbar_common_transaction::CMP_STATUS | axi_crossbar_common_transaction::CMP_SOURCE |
+          axi_crossbar_common_transaction::CMP_DEST | axi_crossbar_common_transaction::CMP_ID;
+        if (ctx.side == AXI_COMMON_DOWNSTREAM && ctx.downstream_id_contains_source)
+          common_tr.source_port = tr.id >> ctx.original_id_width;
+        if (tr.xact_type == svt_axi_transaction::WRITE)
+          common_tr.status = convert_status(tr.bresp);
+        else if (beat < tr.rresp.size())
+          common_tr.status = convert_status(tr.rresp[beat]);
+        else
+          common_tr.valid_mask &= ~axi_crossbar_common_transaction::CMP_STATUS;
+        result.push_back(common_tr);
+      end
+    end
+  endfunction
+endclass
+`endif

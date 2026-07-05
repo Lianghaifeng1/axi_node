@@ -11,6 +11,16 @@ sim/*.shm/
 sim/*.fsdb
 sim/*.vcd
 
+# VCS generated files
+sim/simv
+sim/simv.daidir/
+sim/simv.vdb/
+sim/csrc/
+sim/novas.conf
+sim/novas.rc
+sim/vc_hdrs.h
+sim/ucli.key
+
 # Editor and OS files
 *.swp
 *~

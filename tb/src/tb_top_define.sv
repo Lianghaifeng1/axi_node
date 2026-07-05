@@ -18,8 +18,10 @@
 `include "clk_rst_if.sv"
 `include "pins_if.sv"
 
-// vip agent pkg (included via Makefile VIP_SRC, not here)
-// VIP packages are compiled separately in Makefile before this file
+`ifdef AXI_VIP_SVT
+  `include "svt_axi_if.svi"
+  `include "svt_axi.uvm.pkg"
+`endif
 
 // DUT package (if specified)
 // env pkg

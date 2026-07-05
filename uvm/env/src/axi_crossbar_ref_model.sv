@@ -2,9 +2,13 @@ class axi_crossbar_ref_model extends uvm_component;
   `uvm_component_utils(axi_crossbar_ref_model)
 
   axi_crossbar_cfg m_cfg_h;
+`ifdef AXI_VIP_SVT
+  axi_crossbar_svt_axi_common_adapter m_axi_adapter;
+`else
   axi_crossbar_cdn_axi_common_adapter m_axi_adapter;
-  uvm_tlm_analysis_fifo #(denaliCdn_axiTransaction) m_mst_fifo[`AXI_MST_AGENT_NUM];
-  uvm_tlm_analysis_fifo #(denaliCdn_axiTransaction) m_slv_fifo[`AXI_SLV_AGENT_NUM];
+`endif
+  uvm_tlm_analysis_fifo #(axi_vip_transaction_t) m_mst_fifo[`AXI_MST_AGENT_NUM];
+  uvm_tlm_analysis_fifo #(axi_vip_transaction_t) m_slv_fifo[`AXI_SLV_AGENT_NUM];
   uvm_analysis_port #(axi_crossbar_common_transaction) m_expected_ap[`AXI_SLV_AGENT_NUM];
   uvm_analysis_port #(axi_crossbar_common_transaction) m_actual_ap[`AXI_SLV_AGENT_NUM];
 
@@ -17,7 +21,11 @@ class axi_crossbar_ref_model extends uvm_component;
     if (!uvm_config_db#(axi_crossbar_cfg)::get(this, "", "cfg", m_cfg_h))
       `uvm_fatal(get_full_name(), "failed to get axi_crossbar_cfg")
 
+`ifdef AXI_VIP_SVT
+    m_axi_adapter = axi_crossbar_svt_axi_common_adapter::type_id::create("m_axi_adapter");
+`else
     m_axi_adapter = axi_crossbar_cdn_axi_common_adapter::type_id::create("m_axi_adapter");
+`endif
     for (int i = 0; i < `AXI_MST_AGENT_NUM; i++)
       m_mst_fifo[i] = new($sformatf("m_mst_fifo[%0d]", i), this);
     for (int i = 0; i < `AXI_SLV_AGENT_NUM; i++) begin
@@ -37,7 +45,7 @@ class axi_crossbar_ref_model extends uvm_component;
   endfunction
 
   protected function void convert_and_publish(
-    denaliCdn_axiTransaction tr,
+    axi_vip_transaction_t tr,
     axi_crossbar_common_side_e side,
     int unsigned port_index
   );
@@ -45,16 +53,24 @@ class axi_crossbar_ref_model extends uvm_component;
     axi_crossbar_common_transaction result[$];
     int dest_port;
 
+`ifdef AXI_VIP_SVT
+    dest_port = decode_slave(tr.addr);
+`else
     dest_port = decode_slave(tr.StartAddress);
+`endif
     if (dest_port < 0 || dest_port >= `AXI_SLV_AGENT_NUM) begin
       `uvm_error(get_name(),
-        $sformatf("address 0x%016h does not map to a scoreboard endpoint", tr.StartAddress))
+        $sformatf("transaction address does not map to a scoreboard endpoint"))
       return;
     end
     if (side == AXI_COMMON_DOWNSTREAM && dest_port != port_index) begin
       `uvm_error(get_name(),
         $sformatf("routing mismatch: address 0x%016h maps to slave%0d, observed on slave%0d",
+`ifdef AXI_VIP_SVT
+          tr.addr, dest_port, port_index))
+`else
           tr.StartAddress, dest_port, port_index))
+`endif
       return;
     end
 
@@ -72,7 +88,7 @@ class axi_crossbar_ref_model extends uvm_component;
       if (result[i].source_port >= `AXI_MST_AGENT_NUM) begin
         `uvm_error(get_name(),
           $sformatf("invalid source master %0d decoded from AXI ID 0x%0h",
-            result[i].source_port, tr.IdTag))
+            result[i].source_port, result[i].transaction_id))
         continue;
       end
       if (side == AXI_COMMON_UPSTREAM)
@@ -83,7 +99,7 @@ class axi_crossbar_ref_model extends uvm_component;
   endfunction
 
   protected task collect_master(int unsigned index);
-    denaliCdn_axiTransaction tr;
+    axi_vip_transaction_t tr;
     forever begin
       m_mst_fifo[index].get(tr);
       convert_and_publish(tr, AXI_COMMON_UPSTREAM, index);
@@ -91,7 +107,7 @@ class axi_crossbar_ref_model extends uvm_component;
   endtask
 
   protected task collect_slave(int unsigned index);
-    denaliCdn_axiTransaction tr;
+    axi_vip_transaction_t tr;
     forever begin
       m_slv_fifo[index].get(tr);
       convert_and_publish(tr, AXI_COMMON_DOWNSTREAM, index);

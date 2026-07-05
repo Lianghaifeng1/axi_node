@@ -30,9 +30,12 @@ class axi_crossbar_cfg extends uvm_object;
 
 
 
+`ifdef AXI_VIP_SVT
+  rand svt_axi_system_configuration m_axi_sys_cfg_h;
+`else
   rand cdnAxiUvmConfig m_axi_mst_agt_cfg_h[`AXI_MST_AGENT_NUM ];
-
   rand cdnAxiUvmConfig m_axi_slv_agt_cfg_h[`AXI_SLV_AGENT_NUM ];
+`endif
 
 
 
@@ -75,6 +78,32 @@ function axi_crossbar_cfg::new(string name = "axi_crossbar_cfg");
   m_endpoint_base[1] = 64'h1000_0000;
   m_endpoint_end[1]  = 64'h1fff_ffff;
 
+`ifdef AXI_VIP_SVT
+  m_axi_sys_cfg_h = svt_axi_system_configuration::type_id::create("m_axi_sys_cfg_h");
+  m_axi_sys_cfg_h.num_masters = `AXI_MST_AGENT_NUM;
+  m_axi_sys_cfg_h.num_slaves = `AXI_SLV_AGENT_NUM;
+  m_axi_sys_cfg_h.system_monitor_enable = 1;
+  m_axi_sys_cfg_h.create_sub_cfgs(`AXI_MST_AGENT_NUM, `AXI_SLV_AGENT_NUM);
+  for (int indx = 0; indx < `AXI_MST_AGENT_NUM; indx++) begin
+    m_has_axi_mst_agt_en[indx] = 1;
+    m_axi_sys_cfg_h.master_cfg[indx].data_width = 32;
+    m_axi_sys_cfg_h.master_cfg[indx].axi_interface_type = svt_axi_port_configuration::AXI4;
+    m_axi_sys_cfg_h.master_cfg[indx].addr_width = 32;
+    m_axi_sys_cfg_h.master_cfg[indx].id_width = 8;
+    m_axi_sys_cfg_h.master_cfg[indx].transaction_coverage_enable = 1;
+  end
+  for (int indx = 0; indx < `AXI_SLV_AGENT_NUM; indx++) begin
+    m_has_axi_slv_agt_en[indx] = 1;
+    m_axi_sys_cfg_h.slave_cfg[indx].data_width = 32;
+    m_axi_sys_cfg_h.slave_cfg[indx].axi_interface_type = svt_axi_port_configuration::AXI4;
+    m_axi_sys_cfg_h.slave_cfg[indx].addr_width = 32;
+    m_axi_sys_cfg_h.slave_cfg[indx].id_width = 9;
+    m_axi_sys_cfg_h.slave_cfg[indx].transaction_coverage_enable = 1;
+    m_axi_sys_cfg_h.slave_cfg[indx].reordering_algorithm = svt_axi_port_configuration::RANDOM;
+  end
+  m_axi_sys_cfg_h.set_addr_range(0, m_endpoint_base[0], m_endpoint_end[0]);
+  m_axi_sys_cfg_h.set_addr_range(1, m_endpoint_base[1], m_endpoint_end[1]);
+`else
   for (int indx = 0; indx < `AXI_MST_AGENT_NUM; indx++) begin
       m_axi_mst_agt_cfg_h[indx] =
         cdnAxiUvmConfig::type_id::create(
@@ -127,7 +156,7 @@ function axi_crossbar_cfg::new(string name = "axi_crossbar_cfg");
       m_has_axi_slv_agt_en[indx] = 1;
 
   end
-
+`endif
 
 
 endfunction : new

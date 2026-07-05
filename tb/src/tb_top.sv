@@ -5,6 +5,10 @@ module tb_top;
   // Import the DDVAPI AHB SV interface and the generic Mem interface
   import axi_crossbar_env_pkg::*;
   import axi_crossbar_test_pkg::*;
+`ifdef AXI_VIP_SVT
+  import svt_uvm_pkg::*;
+  import svt_axi_uvm_pkg::*;
+`endif
 
   //signals definition
   wire       sys_clk;
@@ -122,6 +126,7 @@ module tb_top;
   );
 
 
+`ifndef AXI_VIP_SVT
 generate
     for (genvar i = 0; i < `AXI_MST_AGENT_NUM; i++) begin : axi_mst_if
       cdnAxi4ActiveMasterInterface #(
@@ -191,7 +196,7 @@ generate
         );
       end
     end
-  endgenerate
+endgenerate
 generate
     for (genvar i = 0; i < `AXI_SLV_AGENT_NUM; i++) begin : axi_slv_if
       cdnAxi4ActiveSlaveInterface #(
@@ -261,7 +266,105 @@ generate
         );
       end
     end
+endgenerate
+`else
+  svt_axi_if axi_if();
+  assign axi_if.common_aclk = sys_clk;
+  generate
+    for (genvar i = 0; i < `AXI_MST_AGENT_NUM; i++) begin : svt_mst_if
+      assign axi_if.master_if[i].aresetn = sys_rstn;
+      assign s_axi_awvalid[i] = axi_if.master_if[i].awvalid;
+      assign s_axi_awaddr[i*ADDR_WIDTH +: ADDR_WIDTH] = axi_if.master_if[i].awaddr;
+      assign s_axi_awlen[i*8 +: 8] = axi_if.master_if[i].awlen;
+      assign s_axi_awsize[i*3 +: 3] = axi_if.master_if[i].awsize;
+      assign s_axi_awburst[i*2 +: 2] = axi_if.master_if[i].awburst;
+      assign s_axi_awlock[i] = axi_if.master_if[i].awlock;
+      assign s_axi_awcache[i*4 +: 4] = axi_if.master_if[i].awcache;
+      assign s_axi_awprot[i*3 +: 3] = axi_if.master_if[i].awprot;
+      assign s_axi_awqos[i*4 +: 4] = axi_if.master_if[i].awqos;
+      assign s_axi_awid[i*S_ID_WIDTH +: S_ID_WIDTH] = axi_if.master_if[i].awid;
+      assign s_axi_awuser[i*AWUSER_WIDTH +: AWUSER_WIDTH] = axi_if.master_if[i].awuser;
+      assign axi_if.master_if[i].awready = s_axi_awready[i];
+      assign s_axi_wvalid[i] = axi_if.master_if[i].wvalid;
+      assign s_axi_wlast[i] = axi_if.master_if[i].wlast;
+      assign s_axi_wdata[i*DATA_WIDTH +: DATA_WIDTH] = axi_if.master_if[i].wdata;
+      assign s_axi_wstrb[i*STRB_WIDTH +: STRB_WIDTH] = axi_if.master_if[i].wstrb;
+      assign s_axi_wuser[i*WUSER_WIDTH +: WUSER_WIDTH] = axi_if.master_if[i].wuser;
+      assign axi_if.master_if[i].wready = s_axi_wready[i];
+      assign axi_if.master_if[i].bvalid = s_axi_bvalid[i];
+      assign axi_if.master_if[i].bresp = s_axi_bresp[i*2 +: 2];
+      assign axi_if.master_if[i].bid = s_axi_bid[i*S_ID_WIDTH +: S_ID_WIDTH];
+      assign axi_if.master_if[i].buser = s_axi_buser[i*BUSER_WIDTH +: BUSER_WIDTH];
+      assign s_axi_bready[i] = axi_if.master_if[i].bready;
+      assign s_axi_arvalid[i] = axi_if.master_if[i].arvalid;
+      assign s_axi_araddr[i*ADDR_WIDTH +: ADDR_WIDTH] = axi_if.master_if[i].araddr;
+      assign s_axi_arlen[i*8 +: 8] = axi_if.master_if[i].arlen;
+      assign s_axi_arsize[i*3 +: 3] = axi_if.master_if[i].arsize;
+      assign s_axi_arburst[i*2 +: 2] = axi_if.master_if[i].arburst;
+      assign s_axi_arlock[i] = axi_if.master_if[i].arlock;
+      assign s_axi_arcache[i*4 +: 4] = axi_if.master_if[i].arcache;
+      assign s_axi_arprot[i*3 +: 3] = axi_if.master_if[i].arprot;
+      assign s_axi_arqos[i*4 +: 4] = axi_if.master_if[i].arqos;
+      assign s_axi_arid[i*S_ID_WIDTH +: S_ID_WIDTH] = axi_if.master_if[i].arid;
+      assign s_axi_aruser[i*ARUSER_WIDTH +: ARUSER_WIDTH] = axi_if.master_if[i].aruser;
+      assign axi_if.master_if[i].arready = s_axi_arready[i];
+      assign axi_if.master_if[i].rvalid = s_axi_rvalid[i];
+      assign axi_if.master_if[i].rlast = s_axi_rlast[i];
+      assign axi_if.master_if[i].rdata = s_axi_rdata[i*DATA_WIDTH +: DATA_WIDTH];
+      assign axi_if.master_if[i].rresp = s_axi_rresp[i*2 +: 2];
+      assign axi_if.master_if[i].rid = s_axi_rid[i*S_ID_WIDTH +: S_ID_WIDTH];
+      assign axi_if.master_if[i].ruser = s_axi_ruser[i*RUSER_WIDTH +: RUSER_WIDTH];
+      assign s_axi_rready[i] = axi_if.master_if[i].rready;
+    end
+    for (genvar i = 0; i < `AXI_SLV_AGENT_NUM; i++) begin : svt_slv_if
+      assign axi_if.slave_if[i].aresetn = sys_rstn;
+      assign axi_if.slave_if[i].awvalid = m_axi_awvalid[i];
+      assign axi_if.slave_if[i].awaddr = m_axi_awaddr[i*ADDR_WIDTH +: ADDR_WIDTH];
+      assign axi_if.slave_if[i].awlen = m_axi_awlen[i*8 +: 8];
+      assign axi_if.slave_if[i].awsize = m_axi_awsize[i*3 +: 3];
+      assign axi_if.slave_if[i].awburst = m_axi_awburst[i*2 +: 2];
+      assign axi_if.slave_if[i].awlock = m_axi_awlock[i];
+      assign axi_if.slave_if[i].awcache = m_axi_awcache[i*4 +: 4];
+      assign axi_if.slave_if[i].awprot = m_axi_awprot[i*3 +: 3];
+      assign axi_if.slave_if[i].awqos = m_axi_awqos[i*4 +: 4];
+      assign axi_if.slave_if[i].awregion = m_axi_awregion[i*4 +: 4];
+      assign axi_if.slave_if[i].awid = m_axi_awid[i*M_ID_WIDTH +: M_ID_WIDTH];
+      assign axi_if.slave_if[i].awuser = m_axi_awuser[i*AWUSER_WIDTH +: AWUSER_WIDTH];
+      assign m_axi_awready[i] = axi_if.slave_if[i].awready;
+      assign axi_if.slave_if[i].wvalid = m_axi_wvalid[i];
+      assign axi_if.slave_if[i].wlast = m_axi_wlast[i];
+      assign axi_if.slave_if[i].wdata = m_axi_wdata[i*DATA_WIDTH +: DATA_WIDTH];
+      assign axi_if.slave_if[i].wstrb = m_axi_wstrb[i*STRB_WIDTH +: STRB_WIDTH];
+      assign axi_if.slave_if[i].wuser = m_axi_wuser[i*WUSER_WIDTH +: WUSER_WIDTH];
+      assign m_axi_wready[i] = axi_if.slave_if[i].wready;
+      assign m_axi_bvalid[i] = axi_if.slave_if[i].bvalid;
+      assign m_axi_bresp[i*2 +: 2] = axi_if.slave_if[i].bresp;
+      assign m_axi_bid[i*M_ID_WIDTH +: M_ID_WIDTH] = axi_if.slave_if[i].bid;
+      assign m_axi_buser[i*BUSER_WIDTH +: BUSER_WIDTH] = axi_if.slave_if[i].buser;
+      assign axi_if.slave_if[i].bready = m_axi_bready[i];
+      assign axi_if.slave_if[i].arvalid = m_axi_arvalid[i];
+      assign axi_if.slave_if[i].araddr = m_axi_araddr[i*ADDR_WIDTH +: ADDR_WIDTH];
+      assign axi_if.slave_if[i].arlen = m_axi_arlen[i*8 +: 8];
+      assign axi_if.slave_if[i].arsize = m_axi_arsize[i*3 +: 3];
+      assign axi_if.slave_if[i].arburst = m_axi_arburst[i*2 +: 2];
+      assign axi_if.slave_if[i].arlock = m_axi_arlock[i];
+      assign axi_if.slave_if[i].arcache = m_axi_arcache[i*4 +: 4];
+      assign axi_if.slave_if[i].arprot = m_axi_arprot[i*3 +: 3];
+      assign axi_if.slave_if[i].arqos = m_axi_arqos[i*4 +: 4];
+      assign axi_if.slave_if[i].arregion = m_axi_arregion[i*4 +: 4];
+      assign axi_if.slave_if[i].arid = m_axi_arid[i*M_ID_WIDTH +: M_ID_WIDTH];
+      assign axi_if.slave_if[i].aruser = m_axi_aruser[i*ARUSER_WIDTH +: ARUSER_WIDTH];
+      assign m_axi_arready[i] = axi_if.slave_if[i].arready;
+      assign m_axi_rvalid[i] = axi_if.slave_if[i].rvalid;
+      assign m_axi_rlast[i] = axi_if.slave_if[i].rlast;
+      assign m_axi_rdata[i*DATA_WIDTH +: DATA_WIDTH] = axi_if.slave_if[i].rdata;
+      assign m_axi_rresp[i*2 +: 2] = axi_if.slave_if[i].rresp;
+      assign m_axi_rid[i*M_ID_WIDTH +: M_ID_WIDTH] = axi_if.slave_if[i].rid;
+      assign m_axi_ruser[i*RUSER_WIDTH +: RUSER_WIDTH] = axi_if.slave_if[i].ruser;
+      assign axi_if.slave_if[i].rready = m_axi_rready[i];
+    end
   endgenerate
+`endif
 initial begin
     $timeformat(-9, 3, "ns", 10);
 aclk_rst_if.set_active(
@@ -269,6 +372,10 @@ aclk_rst_if.set_active(
       .drive_rst_n_val(1)
     );
 uvm_config_db#(axi_crossbar_dut_vif)::set(null, "uvm_test_top", "vif", dut_intf);
+`ifdef AXI_VIP_SVT
+uvm_config_db#(svt_axi_vif)::set(null,
+  "uvm_test_top.m_env_h.m_axi_sys_env_h", "vif", axi_if);
+`endif
 
 uvm_config_db#(axi_crossbar_dut_vif)::set(null, "uvm_test_top.m_vseqr_h", "vif", dut_intf);
 

@@ -1,8 +1,12 @@
 class axi_crossbar_env extends uvm_env;
   `uvm_component_utils(axi_crossbar_env)
 
+`ifdef AXI_VIP_SVT
+  svt_axi_system_env m_axi_sys_env_h;
+`else
   cdnAxiUvmAgent m_axi_mst_agt_h[`AXI_MST_AGENT_NUM];
   cdnAxiUvmAgent m_axi_slv_agt_h[`AXI_SLV_AGENT_NUM];
+`endif
   axi_crossbar_cfg m_cfg_h;//env configuration
 
   axi_crossbar_regs_model m_regs_model_h;
@@ -53,6 +57,11 @@ function void axi_crossbar_env::build_phase(uvm_phase phase);
   end
 
 
+`ifdef AXI_VIP_SVT
+  uvm_config_db#(svt_axi_system_configuration)::set(
+    this, "m_axi_sys_env_h", "cfg", m_cfg_h.m_axi_sys_cfg_h);
+  m_axi_sys_env_h = svt_axi_system_env::type_id::create("m_axi_sys_env_h", this);
+`else
 for(int indx=0; indx<`AXI_MST_AGENT_NUM; indx++) begin
     if(m_cfg_h.m_has_axi_mst_agt_en[indx] == 1) begin
       m_axi_mst_agt_h[indx] = cdnAxiUvmAgent::type_id::create($sformatf("m_axi_mst_agt_h[%0d]",indx),this);
@@ -65,6 +74,7 @@ for(int indx=0; indx<`AXI_SLV_AGENT_NUM; indx++) begin
       uvm_config_object::set(this, $sformatf("m_axi_slv_agt_h[%0d]*",indx), "cfg", m_cfg_h.m_axi_slv_agt_cfg_h[indx]);
     end
   end
+`endif
 `uvm_info(get_full_name(),"build_phase is exited", UVM_MEDIUM)
 endfunction : build_phase
 
@@ -78,6 +88,14 @@ function void axi_crossbar_env::connect_phase(uvm_phase phase);
   // ============================================================
   // 1. Agent Monitor -> Ref Model (输入)
   // ============================================================
+`ifdef AXI_VIP_SVT
+  for (int indx = 0; indx < `AXI_MST_AGENT_NUM; indx++)
+    m_axi_sys_env_h.master[indx].monitor.item_observed_port.connect(
+      m_ref_model_h.m_mst_fifo[indx].analysis_export);
+  for (int indx = 0; indx < `AXI_SLV_AGENT_NUM; indx++)
+    m_axi_sys_env_h.slave[indx].monitor.item_observed_port.connect(
+      m_ref_model_h.m_slv_fifo[indx].analysis_export);
+`else
   for (int indx = 0; indx < `AXI_MST_AGENT_NUM; indx++) begin
     if (m_cfg_h.m_has_axi_mst_agt_en[indx]) begin
       void'(m_axi_mst_agt_h[indx].setCallback(DENALI_CDN_AXI_CB_Ended));
@@ -92,6 +110,7 @@ function void axi_crossbar_env::connect_phase(uvm_phase phase);
         m_ref_model_h.m_slv_fifo[indx].analysis_export);
     end
   end
+`endif
 
   // ============================================================
   // 2. Ref Model -> Scoreboard (Expected)

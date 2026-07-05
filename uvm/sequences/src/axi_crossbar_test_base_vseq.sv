@@ -16,9 +16,13 @@ axi_crossbar_dut_vif m_dut_vif_h;
 //clk rst interface
 virtual clk_rst_if aclk_rst_vif;
 
+`ifdef AXI_VIP_SVT
+svt_axi_master_sequencer m_axi_mst_seqr_h[`AXI_MST_AGENT_NUM];
+svt_axi_slave_sequencer m_axi_slv_seqr_h[`AXI_SLV_AGENT_NUM];
+`else
 cdnAxiUvmSequencer m_axi_mst_seqr_h[`AXI_MST_AGENT_NUM];
-
 cdnAxiUvmSequencer m_axi_slv_seqr_h[`AXI_SLV_AGENT_NUM];
+`endif
 extern function new(string name="axi_crossbar_test_base_vseq");
 extern virtual task pre_body();
 extern virtual task system_config();

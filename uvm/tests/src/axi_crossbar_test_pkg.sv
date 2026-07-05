@@ -1,11 +1,13 @@
 package axi_crossbar_test_pkg;
   import uvm_pkg::*;     // import uvm package
-  import DenaliSvMem::*;
-
-  // Include the VIP UVM base classes
+`ifdef AXI_VIP_SVT
+  import svt_uvm_pkg::*;
+  import svt_axi_uvm_pkg::*;
+`else
   import DenaliSvMem::*;
   import DenaliSvCdn_axi::*;
   import cdnAxiUvm::*;
+`endif
 
   import uvmreg_byte_pkg::*;
   import uvmreg_word_pkg::*;

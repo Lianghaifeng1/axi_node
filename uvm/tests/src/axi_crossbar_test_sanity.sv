@@ -29,6 +29,11 @@ endfunction : new
 // build_phase
 //------------------------------------------------------------------------------
 function void axi_crossbar_test_sanity::build_phase(uvm_phase phase);
+`ifdef AXI_VIP_SVT
+  uvm_config_db#(uvm_object_wrapper)::set(this,
+    "m_env_h.m_axi_sys_env_h.slave*.sequencer.run_phase",
+    "default_sequence", axi_crossbar_svt_slave_mem_response_seq::type_id::get());
+`endif
   super.build_phase(phase);
   m_vseq_h = axi_crossbar_test_vseq::type_id::create("m_vseq_h", this);
 endfunction : build_phase

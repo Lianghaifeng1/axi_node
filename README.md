@@ -1,6 +1,9 @@
 # AXI Node 2x2 UVM Verification Environment
 
-这是一个基于Cadence AXI4 VIP和Xcelium的2-master、2-slave AXI crossbar block-level UVM验证环境。
+这是一个支持 Cadence AXI VIP/Xcelium 和 Synopsys SVT AXI VIP/VCS 的
+2-master、2-slave AXI crossbar block-level UVM 验证环境。通过
+`AXI_VIP_SVT` 编译宏选择 VIP 后端，common transaction、reference model
+和 scoreboard 在两个后端之间共用。
 
 ## 目录
 
@@ -9,15 +12,14 @@
 - `uvm/`：environment、ref model、通用逐字节scoreboard、sequence和test。
 - `common_ifs/`：时钟、复位和通用接口。
 - `doc/`：ref model、common transaction和scoreboard设计说明。
-- `sim/`：Xcelium Makefile。
+- `sim/`：Xcelium 与 VCS Makefile。
 
 ## 依赖
 
-- Cadence Xcelium 23.09或兼容版本。
-- Cadence AXI VIP 11.30或兼容版本。
-- 已编译的64-bit Cadence AXI VIP UVM动态库。
+- Cadence 后端：Xcelium 23.09、Cadence AXI VIP 11.30 或兼容版本。
+- Synopsys 后端：VCS 2023.12、SVT AXI VIP O-2018.09 或兼容版本。
 
-商业EDA工具、Cadence VIP源文件及动态库不包含在本仓库中。可通过环境变量覆盖安装路径：
+商业 EDA 工具及 VIP 源文件不包含在本仓库中。Cadence 安装路径可通过环境变量覆盖：
 
 ```bash
 export CDS_INST_DIR=/path/to/XCELIUM
@@ -29,6 +31,8 @@ export CDN_VIP_LIB_PATH=/path/to/compiled/axi/vip_lib
 
 ## 编译与运行
 
+Cadence AXI VIP / Xcelium：
+
 ```bash
 cd sim
 make comp_elab
@@ -37,7 +41,20 @@ make run TC=axi_crossbar_test_stress SEED=20260705 NO_WAVE=1
 make run TC=axi_crossbar_test_scb_unit VERBOSITY=UVM_MEDIUM NO_WAVE=1
 ```
 
-stress测试覆盖FIXED/INCR/WRAP、narrow、非对齐、sparse strobe、多master、多slave和多ID outstanding。
+Synopsys SVT AXI VIP / VCS：
+
+```bash
+cd sim
+make -f Makefile.vcs comp_elab
+make -f Makefile.vcs run TC=axi_crossbar_test_sanity SEED=1
+make -f Makefile.vcs run TC=axi_crossbar_test_stress SEED=1
+```
+
+`Makefile.vcs` 自动定义 `AXI_VIP_SVT`。安装位置不同时，可覆盖
+`VCS_HOME` 和 `SVT_HOME`。
+
+stress 测试覆盖 FIXED/INCR/WRAP、narrow、非对齐、sparse strobe、
+多 master、多 slave 和多 ID outstanding。
 
 ## Scoreboard
 

@@ -71,7 +71,11 @@ function void axi_crossbar_test_base::connect_phase(uvm_phase phase);
 
   for(int indx=0; indx<`AXI_MST_AGENT_NUM; indx++) begin
     if(m_cfg_h.m_has_axi_mst_agt_en[indx] == 1) begin
+`ifdef AXI_VIP_SVT
+      if(!$cast(m_vseqr_h.m_axi_mst_seqr_h[indx], m_env_h.m_axi_sys_env_h.master[indx].sequencer)) begin
+`else
       if(!$cast(m_vseqr_h.m_axi_mst_seqr_h[indx], m_env_h.m_axi_mst_agt_h[indx].sequencer)) begin
+`endif
         `uvm_fatal(get_type_name(),
                    $sformatf("$cast(m_vseqr_h.m_axi_mst_seqr_h[indx], m_env_h.m_axi_mst_agt_h[indx].sequencer )) call failed!"));
       end
@@ -80,7 +84,11 @@ function void axi_crossbar_test_base::connect_phase(uvm_phase phase);
 
   for(int indx=0; indx<`AXI_SLV_AGENT_NUM; indx++) begin
     if(m_cfg_h.m_has_axi_slv_agt_en[indx] == 1) begin
+`ifdef AXI_VIP_SVT
+      if(!$cast(m_vseqr_h.m_axi_slv_seqr_h[indx], m_env_h.m_axi_sys_env_h.slave[indx].sequencer)) begin
+`else
       if(!$cast(m_vseqr_h.m_axi_slv_seqr_h[indx], m_env_h.m_axi_slv_agt_h[indx].sequencer)) begin
+`endif
         `uvm_fatal(get_type_name(),
                    $sformatf("$cast(m_vseqr_h.m_axi_slv_seqr_h[indx], m_env_h.m_axi_slv_agt_h[indx].sequencer )) call failed!"));
       end

@@ -1,3 +1,89 @@
+`ifdef AXI_VIP_SVT
+class axi_crossbar_axi_blocking_read_seq extends svt_axi_master_base_sequence;
+  rand bit [63:0] address;
+  rand int unsigned length;
+  rand axi_vip_size_t size;
+  rand axi_vip_burst_t kind;
+  rand axi_vip_secure_t secure;
+  svt_axi_transaction response;
+  bit force_id;
+  bit [63:0] fixed_id;
+  `uvm_object_utils(axi_crossbar_axi_blocking_read_seq)
+  function new(string name = "axi_crossbar_axi_blocking_read_seq"); super.new(name); endfunction
+  virtual task body();
+    svt_axi_master_transaction tr;
+    super.body();
+    tr = svt_axi_master_transaction::type_id::create("tr");
+    start_item(tr);
+    if (!tr.randomize() with { xact_type == svt_axi_transaction::READ;
+        addr == local::address; burst_length == local::length;
+        burst_size == local::size; burst_type == local::kind; })
+      `uvm_fatal(get_type_name(), "failed to randomize SVT read transaction")
+    if (force_id) tr.id = fixed_id;
+    finish_item(tr);
+    get_response(response);
+  endtask
+endclass
+
+class axi_crossbar_axi_blocking_write_seq extends svt_axi_master_base_sequence;
+  rand bit [63:0] address;
+  rand int unsigned length;
+  rand axi_vip_size_t size;
+  rand axi_vip_burst_t kind;
+  rand axi_vip_secure_t secure;
+  svt_axi_transaction response;
+  bit force_id;
+  bit [63:0] fixed_id;
+  bit force_strobe;
+  bit [31:0] fixed_strobe;
+  `uvm_object_utils(axi_crossbar_axi_blocking_write_seq)
+  function new(string name = "axi_crossbar_axi_blocking_write_seq"); super.new(name); endfunction
+  virtual task body();
+    svt_axi_master_transaction tr;
+    super.body();
+    tr = svt_axi_master_transaction::type_id::create("tr");
+    start_item(tr);
+    if (!tr.randomize() with { xact_type == svt_axi_transaction::WRITE;
+        addr == local::address; burst_length == local::length;
+        burst_size == local::size; burst_type == local::kind; data_before_addr == 0; })
+      `uvm_fatal(get_type_name(), "failed to randomize SVT write transaction")
+    if (force_id) tr.id = fixed_id;
+    foreach (tr.wstrb[i])
+      tr.wstrb[i] = force_strobe ? fixed_strobe :
+        ((1 << (1 << int'(size))) - 1);
+    finish_item(tr);
+    get_response(response);
+  endtask
+endclass
+
+class axi_crossbar_svt_slave_mem_response_seq extends svt_axi_slave_base_sequence;
+  svt_axi_port_configuration cfg;
+  `uvm_object_utils(axi_crossbar_svt_slave_mem_response_seq)
+  function new(string name = "axi_crossbar_svt_slave_mem_response_seq"); super.new(name); endfunction
+  virtual task body();
+    svt_axi_slave_transaction req_resp;
+    svt_configuration get_cfg;
+    p_sequencer.get_cfg(get_cfg);
+    if (!$cast(cfg, get_cfg))
+      `uvm_fatal(get_type_name(), "failed to get SVT AXI slave port configuration")
+    sink_responses();
+    forever begin
+      p_sequencer.response_request_port.peek(req_resp);
+      if (!req_resp.randomize() with {
+          bresp == svt_axi_slave_transaction::OKAY;
+          foreach (rresp[i]) rresp[i] == svt_axi_slave_transaction::OKAY; })
+        `uvm_fatal(get_type_name(), "failed to randomize SVT slave response")
+      if (req_resp.get_transmitted_channel() == svt_axi_slave_transaction::WRITE)
+        put_write_transaction_data_to_mem(req_resp);
+      else if (req_resp.get_transmitted_channel() == svt_axi_slave_transaction::READ)
+        get_read_data_from_mem_to_transaction(req_resp);
+      if (!$cast(req, req_resp))
+        `uvm_fatal(get_type_name(), "failed to cast SVT slave response request")
+      `uvm_send(req)
+    end
+  endtask
+endclass
+`else
 class axi_crossbar_axi_transaction extends denaliCdn_axiTransaction;
 
   `uvm_object_utils(axi_crossbar_axi_transaction)
@@ -190,3 +276,4 @@ class axi_crossbar_axi_blocking_write_seq extends cdnAxiUvmSequence;
   endtask
 
 endclass
+`endif

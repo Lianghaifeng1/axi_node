@@ -1,0 +1,44 @@
+TB_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+VCS_HOME ?= /opt/eda/Synopsys/vcs/V-2023.12-SP2
+SVT_HOME ?= /home/eda/vip
+VCS := $(VCS_HOME)/linux64/bin/vcs
+TC ?= axi_crossbar_test_sanity
+SEED ?= 1
+
+INC = +incdir+$(SVT_HOME)/src/sverilog/vcs \
+      +incdir+$(SVT_HOME)/include/sverilog \
+      +incdir+$(SVT_HOME)/src/verilog/vcs \
+      +incdir+$(SVT_HOME)/include/verilog \
+      +incdir+$(TB_ROOT)/common_ifs \
+      +incdir+$(TB_ROOT)/tb/src \
+      +incdir+$(TB_ROOT)/uvm/dv_utils \
+      +incdir+$(TB_ROOT)/uvm/env/src \
+      +incdir+$(TB_ROOT)/uvm/tests/src \
+      +incdir+$(TB_ROOT)/uvm/sequences/src \
+      +incdir+$(TB_ROOT)/uvm/sequences/src/virtual_sequence \
+      +incdir+$(TB_ROOT)/uvm/regs_model/src \
+      +incdir+$(TB_ROOT)/rtl
+
+DEFS = +define+AXI_VIP_SVT +define+SVT_UVM_TECHNOLOGY +define+SYNOPSYS_SV \
+       +define+SVT_AXI_MAX_ID_WIDTH=16 \
+       +define+UVM_REG_DATA_WIDTH=1024 +define+UVM_PACKER_MAX_BYTES=1500000 \
+       +define+UVM_DISABLE_AUTO_ITEM_RECORDING
+
+SRC = $(TB_ROOT)/uvm/dv_utils/dv_test_status_pkg.sv \
+      $(TB_ROOT)/uvm/dv_utils/dv_utils_pkg.sv \
+      $(TB_ROOT)/tb/src/tb_top_define.sv \
+      $(TB_ROOT)/tb/src/tb_top.sv
+
+.PHONY: comp_elab run clean
+
+comp_elab: clean
+	VCS_HOME=$(VCS_HOME) $(VCS) -full64 -sverilog -ntb_opts uvm -timescale=1ns/1ps \
+		$(DEFS) $(INC) -f $(TB_ROOT)/tb/fl/dut.f $(SRC) -top tb_top \
+		-Mdir=csrc -o simv -l vcs_compile.log
+
+run:
+	./simv +UVM_TESTNAME=$(TC) +ntb_random_seed=$(SEED) \
+		+UVM_VERBOSITY=UVM_LOW -l $(TC)_seed$(SEED).log
+
+clean:
+	rm -rf simv simv.daidir csrc ucli.key vc_hdrs.h vcs_compile.log *.log
