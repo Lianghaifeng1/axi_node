@@ -18,6 +18,7 @@ package axi_crossbar_env_pkg;
 `endif
 
   typedef virtual axi_crossbar_dut_intf axi_crossbar_dut_vif;
+  typedef virtual cpu_wrapper_dummy_if cpu_wrapper_dummy_vif;
 
   // uvm_macros.svh is included in tb_top_define.sv, no need to include here
   `include "axi_crossbar_env_define.sv"

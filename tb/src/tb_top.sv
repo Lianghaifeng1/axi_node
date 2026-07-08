@@ -29,6 +29,44 @@ module tb_top;
   end
 
   axi_crossbar_dut_intf dut_intf();
+  cpu_wrapper_dummy_if rbc_in_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if mem_in_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if ram_out_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if rom_out_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if public_reg_out_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if private_reg_out_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+  cpu_wrapper_dummy_if rbc_out_dummy_if(
+    .clk  (sys_clk),
+    .rst_n(sys_rstn)
+  );
+
+  initial begin
+    rbc_in_dummy_if.init_dummy();
+    mem_in_dummy_if.init_dummy();
+    ram_out_dummy_if.init_dummy();
+    rom_out_dummy_if.init_dummy();
+    public_reg_out_dummy_if.init_dummy();
+    private_reg_out_dummy_if.init_dummy();
+    rbc_out_dummy_if.init_dummy();
+  end
 
 `ifndef ONLY_COMP_TB
   //instantiate DUT
@@ -372,6 +410,20 @@ aclk_rst_if.set_active(
       .drive_rst_n_val(1)
     );
 uvm_config_db#(axi_crossbar_dut_vif)::set(null, "uvm_test_top", "vif", dut_intf);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "rbc_in_dummy_vif", rbc_in_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "mem_in_dummy_vif", mem_in_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "ram_out_dummy_vif", ram_out_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "rom_out_dummy_vif", rom_out_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "public_reg_out_dummy_vif", public_reg_out_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "private_reg_out_dummy_vif", private_reg_out_dummy_if);
+uvm_config_db#(cpu_wrapper_dummy_vif)::set(null,
+  "uvm_test_top", "rbc_out_dummy_vif", rbc_out_dummy_if);
 `ifdef AXI_VIP_SVT
 uvm_config_db#(svt_axi_vif)::set(null,
   "uvm_test_top.m_env_h.m_axi_sys_env_h", "vif", axi_if);

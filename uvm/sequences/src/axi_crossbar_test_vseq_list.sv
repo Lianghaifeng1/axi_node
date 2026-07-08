@@ -7,3 +7,4 @@
 `include "./virtual_sequence/axi_crossbar_test_vseq.sv"
 `include "./virtual_sequence/axi_crossbar_test_reg_vseq.sv"
 `include "./virtual_sequence/axi_crossbar_test_stress_vseq.sv"
+`include "./virtual_sequence/cpu_wrapper_axi_hub_smoke_vseq.sv"

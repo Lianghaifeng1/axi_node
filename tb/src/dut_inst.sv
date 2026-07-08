@@ -140,7 +140,11 @@ wire [M_COUNT*RUSER_WIDTH-1:0]  m_axi_ruser;
 wire [M_COUNT-1:0]              m_axi_rvalid;
 wire [M_COUNT-1:0]              m_axi_rready;
 
+`ifdef CPU_WRAPPER_SKEL
+cpu_wrapper_stub #(
+`else
 axi_crossbar #(
+`endif
   .S_COUNT                       (S_COUNT),
   .M_COUNT                       (M_COUNT),
   .DATA_WIDTH                    (DATA_WIDTH),

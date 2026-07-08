@@ -1,66 +1,38 @@
-# AXI Node 2x2 UVM Verification Environment
+# CPU_WRAPPER Spec
 
-这是一个支持 Cadence AXI VIP/Xcelium 和 Synopsys SVT AXI VIP/VCS 的
-2-master、2-slave AXI crossbar block-level UVM 验证环境。通过
-`AXI_VIP_SVT` 编译宏选择 VIP 后端，common transaction、reference model
-和 scoreboard 在两个后端之间共用。
+## slv接口
 
-## 目录
+验证环境需要接对应的mst
 
-- `rtl/`：来自alexforencich/verilog-axi的crossbar及必要依赖。
-- `tb/`：DUT实例、AXI VIP接口连接及filelist。
-- `uvm/`：environment、ref model、通用逐字节scoreboard、sequence和test。
-- `common_ifs/`：时钟、复位和通用接口。
-- `doc/`：ref model、common transaction和scoreboard设计说明。
-- `sim/`：Xcelium 与 VCS Makefile。
++ CPU AXI
+  + cpu的对外接口，可以访问所有slv ， 直接接到axi node上
++ mem 
+  + 用于访问sram和rom， 直接接到axi node上，经过内置axi2ram，axi2rom转换后送到对外访问ram rom接口
++ rbc
+  + 用于访问寄存器如 public reg ， private reg， 还有路由到系统rbc mst总线，访问其他地址寄存器，不经过axi node，直接访问寄存器
 
-## 依赖
+## mst接口
 
-- Cadence 后端：Xcelium 23.09、Cadence AXI VIP 11.30 或兼容版本。
-- Synopsys 后端：VCS 2023.12、SVT AXI VIP O-2018.09 或兼容版本。
+验证环境中需要接对应的slv
 
-商业 EDA 工具及 VIP 源文件不包含在本仓库中。Cadence 安装路径可通过环境变量覆盖：
++ axi hub
+  + 用于访问hbm等，需要外接hub然后送到系统fabric， 由axi node而来
++ ram
+  + 访问系统ram，由axi2ram而来
 
-```bash
-export CDS_INST_DIR=/path/to/XCELIUM
-export CDN_VIP_ROOT=/path/to/vipcat
-export CDN_VIP_LIB_PATH=/path/to/compiled/axi/vip_lib
-```
++ rom
+  + 访问系统rom，由axi2ram而来
++ public reg
+  + 寄存器mst接口，可能来自rbc和cpu经过axi node，再经过axi2reg而来
++ private reg
+  + 寄存器mst接口，可能来自rbc和cpu经过axi node，再经过axi2reg而来
++ rbc 
+  + 访问其他系统寄存器，可能来自rbc和cpu经过axi node，再经过axi2reg而来
 
-`CDN_VIP_LIB_PATH/64bit`需要包含工程Makefile引用的VIP动态库。
+## 内部axi node
 
-## 编译与运行
+内部fabric是128bit axi的总线，所以内置协议转换模块
 
-Cadence AXI VIP / Xcelium：
 
-```bash
-cd sim
-make comp_elab
-make run TC=axi_crossbar_test_sanity NO_WAVE=1
-make run TC=axi_crossbar_test_stress SEED=20260705 NO_WAVE=1
-make run TC=axi_crossbar_test_scb_unit VERBOSITY=UVM_MEDIUM NO_WAVE=1
-```
 
-Synopsys SVT AXI VIP / VCS：
-
-```bash
-cd sim
-make -f Makefile.vcs comp_elab
-make -f Makefile.vcs run TC=axi_crossbar_test_sanity SEED=1
-make -f Makefile.vcs run TC=axi_crossbar_test_stress SEED=1
-```
-
-`Makefile.vcs` 自动定义 `AXI_VIP_SVT`。安装位置不同时，可覆盖
-`VCS_HOME` 和 `SVT_HOME`。
-
-stress 测试覆盖 FIXED/INCR/WRAP、narrow、非对齐、sparse strobe、
-多 master、多 slave 和多 ID outstanding。
-
-## Scoreboard
-
-AXI burst由adapter归一化成逐字节common transaction。每个目标slave对应一个scoreboard，使用双向pending池支持expected/actual任意顺序到达。详细规格见`doc/SCB_SPEC_CN.md`。
-
-## 第三方代码
-
-- `rtl/`来自[alexforencich/verilog-axi](https://github.com/alexforencich/verilog-axi)，MIT许可证见`LICENSE.verilog-axi`。
-- `uvm/dv_utils/`包含lowRISC/OpenTitan派生代码，Apache-2.0许可证见`LICENSE.lowRISC`。
+现有svt axi vip， rbc agent(mst, slv), reg vip, mem vip。 

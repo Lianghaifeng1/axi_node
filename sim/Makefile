@@ -33,15 +33,16 @@ TB_SRC += ${TB_ROOT}/uvm/dv_utils/dv_test_status_pkg.sv
 TB_SRC += ${TB_ROOT}/uvm/dv_utils/dv_utils_pkg.sv
 
 # TB source files - top (common_ifs, regs_model, env_pkg, test_pkg are included via tb_top_define.sv)
+TB_SRC += ${TB_ROOT}/tb/src/cpu_wrapper_stub.sv
 TB_SRC += ${TB_ROOT}/tb/src/tb_top_define.sv
 TB_SRC += ${TB_ROOT}/tb/src/tb_top.sv
 
 
 # Cadence VIP environment variables (if not set in .bashrc)
-CDN_VIP_ROOT ?= /opt/eda/cadence/vip/vipcat_11.30.068
+CDN_VIP_ROOT := /opt/eda/cadence/vip/vipcat_11.30.068
 DENALI := ${CDN_VIP_ROOT}/tools.lnx86/denali_64bit
-CDS_INST_DIR ?= /opt/eda/cadence/XCELUMMAIN2309
-CDN_VIP_LIB_PATH ?= /home/eda/prj/vip_lib_common
+CDS_INST_DIR := /opt/eda/cadence/XCELUMMAIN2309
+CDN_VIP_LIB_PATH := /home/eda/vip/cdn_axi/vip_lib_xmsim64
 
 # Local compiled AXI VIP library directory (generated and verified in this workspace)
 VIP_LIB_BASE := ${CDN_VIP_LIB_PATH}
@@ -64,7 +65,7 @@ VIP_SRC += ${DENALI}/ddvapi/sv/uvm/../hdl_interfaces/cdn_axi/cb_interfaces/cdnAx
 
 # DUT include paths (add paths where DUT source files are located)
 # Extract include dir from rtl_path
-DUT_INC += -incdir ${TB_ROOT}/rtl
+DUT_INC += -incdir $(dir /home/eda/vip/cdn_axi/verilog-axi/rtl/axi_crossbar.v)
 
 
 # File lists
@@ -77,6 +78,11 @@ TB_MODEL_FILE_LIST  := -f ${TB_ROOT}/tb/fl/tb_model.f
 #------------------------------------------------------------------------------
 ifdef TC
 TEST_CASE = ${TC}
+endif
+
+ifdef CPU_WRAPPER_SKEL
+DUT_DEF += -define CPU_WRAPPER_SKEL
+DUT_DEF += -define USE_CPU_WRAPPER_STUB
 endif
 
 ifdef ID
@@ -154,12 +160,12 @@ COMP_OPTIONS += -sv_lib ${DENALI}/verilog/libcdnsv.so
 # Load order matters: dependency library (libsn_uvc.so) should be loaded first
 SIMV_OPTIONS += -sv_lib ${VIP_LIB_BASE}/64bit/libsn_uvc.so
 SIMV_OPTIONS += -sv_lib ${VIP_LIB_BASE}/64bit/libcdnvipuvmdpi.so
-SIMV_OPTIONS += -sv_lib ${VIP_LIB_BASE}/64bit/libsn_uvc.so
+SIMV_OPTIONS += -sv_lib ${VIP_LIB_BASE}/64bit/libsn_uvc.so 
 SIMV_OPTIONS += -sv_lib ${VIP_LIB_BASE}/64bit/libcdnvipcuvm.so
 
 # Set LD_LIBRARY_PATH for runtime
 VIP_LIB_PATH := ${VIP_LIB_BASE}/64bit:${DENALI}/verilog
-
+ 
 
 ifdef UDBG
 COMP_OPTIONS += -uvmlinedebug -classlinedebug

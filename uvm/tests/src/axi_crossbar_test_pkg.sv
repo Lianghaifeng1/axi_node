@@ -27,6 +27,7 @@ package axi_crossbar_test_pkg;
   `include "axi_crossbar_test_sanity.sv"
   `include "axi_crossbar_test_reg.sv"
   `include "axi_crossbar_test_stress.sv"
+  `include "cpu_wrapper_axi_hub_smoke_test.sv"
   `include "axi_crossbar_test_scb_unit.sv"
 
 endpackage

@@ -84,3 +84,71 @@ class axi_crossbar_common_transaction extends uvm_sequence_item;
     return diff == "";
   endfunction
 endclass
+
+typedef enum int unsigned {
+  CPUW_DUMMY_RBC_IN,
+  CPUW_DUMMY_MEM_IN,
+  CPUW_DUMMY_RAM_OUT,
+  CPUW_DUMMY_ROM_OUT,
+  CPUW_DUMMY_PUBLIC_REG_OUT,
+  CPUW_DUMMY_PRIVATE_REG_OUT,
+  CPUW_DUMMY_RBC_OUT
+} cpu_wrapper_dummy_port_e;
+
+class cpu_wrapper_dummy_transaction extends uvm_sequence_item;
+  cpu_wrapper_dummy_port_e port;
+  axi_crossbar_common_access_e access;
+  bit [63:0] address;
+  bit [1023:0] data;
+  bit [127:0] byte_en;
+  axi_crossbar_common_status_e status;
+  bit valid;
+  bit ready;
+  string protocol;
+
+  `uvm_object_utils_begin(cpu_wrapper_dummy_transaction)
+    `uvm_field_enum(cpu_wrapper_dummy_port_e, port, UVM_ALL_ON)
+    `uvm_field_enum(axi_crossbar_common_access_e, access, UVM_ALL_ON)
+    `uvm_field_int(address, UVM_ALL_ON)
+    `uvm_field_int(data, UVM_ALL_ON)
+    `uvm_field_int(byte_en, UVM_ALL_ON)
+    `uvm_field_enum(axi_crossbar_common_status_e, status, UVM_ALL_ON)
+    `uvm_field_int(valid, UVM_ALL_ON)
+    `uvm_field_int(ready, UVM_ALL_ON)
+    `uvm_field_string(protocol, UVM_ALL_ON)
+  `uvm_object_utils_end
+
+  function new(string name = "cpu_wrapper_dummy_transaction");
+    super.new(name);
+    status = AXI_COMMON_STATUS_UNKNOWN;
+    valid = 0;
+    ready = 0;
+    protocol = "DUMMY";
+  endfunction
+
+  function axi_crossbar_common_transaction to_common(
+    string item_name,
+    int unsigned source_port,
+    int unsigned dest_port
+  );
+    axi_crossbar_common_transaction common_tr;
+    common_tr = axi_crossbar_common_transaction::type_id::create(item_name);
+    common_tr.access = access;
+    common_tr.address = address;
+    common_tr.data = data[7:0];
+    common_tr.status = status;
+    common_tr.source_port = source_port;
+    common_tr.dest_port = dest_port;
+    common_tr.transaction_id = 0;
+    common_tr.beat_index = 0;
+    common_tr.byte_index = 0;
+    common_tr.source_protocol = protocol;
+    common_tr.valid_mask = axi_crossbar_common_transaction::CMP_ACCESS |
+                           axi_crossbar_common_transaction::CMP_ADDR |
+                           axi_crossbar_common_transaction::CMP_DATA |
+                           axi_crossbar_common_transaction::CMP_STATUS |
+                           axi_crossbar_common_transaction::CMP_SOURCE |
+                           axi_crossbar_common_transaction::CMP_DEST;
+    return common_tr;
+  endfunction
+endclass

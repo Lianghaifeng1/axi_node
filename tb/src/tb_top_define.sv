@@ -17,6 +17,7 @@
 `include "common_ifs_pkg.sv"
 `include "clk_rst_if.sv"
 `include "pins_if.sv"
+`include "cpu_wrapper_dummy_if.sv"
 
 `ifdef AXI_VIP_SVT
   `include "svt_axi_if.svi"

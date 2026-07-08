@@ -13,6 +13,10 @@ class axi_crossbar_env extends uvm_env;
   axi_crossbar_ref_model m_ref_model_h;
   axi_crossbar_scoreboard #(axi_crossbar_common_transaction)
     m_slv_scb_h[`AXI_SLV_AGENT_NUM];
+  axi_crossbar_scoreboard #(axi_crossbar_common_transaction)
+    m_path_wr_scb_h[CPUW_PATH_NUM];
+  axi_crossbar_scoreboard #(axi_crossbar_common_transaction)
+    m_path_rd_scb_h[CPUW_PATH_NUM];
 
   extern function new(string name, uvm_component parent);
   extern virtual function void build_phase(uvm_phase phase);
@@ -48,6 +52,22 @@ function void axi_crossbar_env::build_phase(uvm_phase phase);
 
   m_ref_model_h = axi_crossbar_ref_model::type_id::create("m_ref_model_h", this);
   uvm_config_db#(axi_crossbar_cfg)::set(this, "m_ref_model_h", "cfg", m_cfg_h);
+`ifdef CPU_WRAPPER_SKEL
+  for (int path = 0; path < CPUW_PATH_NUM; path++) begin
+    m_path_wr_scb_h[path] = axi_crossbar_scoreboard#(
+      axi_crossbar_common_transaction
+    )::type_id::create($sformatf("m_path_wr_scb_h[%0d]", path), this);
+    m_path_rd_scb_h[path] = axi_crossbar_scoreboard#(
+      axi_crossbar_common_transaction
+    )::type_id::create($sformatf("m_path_rd_scb_h[%0d]", path), this);
+    uvm_config_db#(int)::set(this,
+      $sformatf("m_path_wr_scb_h[%0d]", path), "m_min_trans_num",
+      (path == CPUW_PATH_CPU_AXI_TO_AXI_HUB) ? 1 : 0);
+    uvm_config_db#(int)::set(this,
+      $sformatf("m_path_rd_scb_h[%0d]", path), "m_min_trans_num",
+      (path == CPUW_PATH_CPU_AXI_TO_AXI_HUB) ? 1 : 0);
+  end
+`else
   for (int indx = 0; indx < `AXI_SLV_AGENT_NUM; indx++) begin
     m_slv_scb_h[indx] = axi_crossbar_scoreboard#(
       axi_crossbar_common_transaction
@@ -55,6 +75,7 @@ function void axi_crossbar_env::build_phase(uvm_phase phase);
     uvm_config_db#(int)::set(this,
       $sformatf("m_slv_scb_h[%0d]", indx), "m_min_trans_num", 1);
   end
+`endif
 
 
 `ifdef AXI_VIP_SVT
@@ -115,6 +136,18 @@ function void axi_crossbar_env::connect_phase(uvm_phase phase);
   // ============================================================
   // 2. Ref Model -> Scoreboard (Expected)
   // ============================================================
+`ifdef CPU_WRAPPER_SKEL
+  for (int path = 0; path < CPUW_PATH_NUM; path++) begin
+    m_ref_model_h.m_expected_wr_ap[path].connect(
+      m_path_wr_scb_h[path].m_expected_analysis_export);
+    m_ref_model_h.m_actual_wr_ap[path].connect(
+      m_path_wr_scb_h[path].m_actual_analysis_export);
+    m_ref_model_h.m_expected_rd_ap[path].connect(
+      m_path_rd_scb_h[path].m_expected_analysis_export);
+    m_ref_model_h.m_actual_rd_ap[path].connect(
+      m_path_rd_scb_h[path].m_actual_analysis_export);
+  end
+`else
   for (int indx = 0; indx < `AXI_SLV_AGENT_NUM; indx++)
     m_ref_model_h.m_expected_ap[indx].connect(
       m_slv_scb_h[indx].m_expected_analysis_export);
@@ -125,6 +158,7 @@ function void axi_crossbar_env::connect_phase(uvm_phase phase);
   for (int indx = 0; indx < `AXI_SLV_AGENT_NUM; indx++)
     m_ref_model_h.m_actual_ap[indx].connect(
       m_slv_scb_h[indx].m_actual_analysis_export);
+`endif
 
   `uvm_info(get_full_name(),"connect_phase is exited", UVM_MEDIUM)
 endfunction : connect_phase

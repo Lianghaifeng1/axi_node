@@ -8,16 +8,29 @@ class axi_crossbar_common_adapter_context extends uvm_object;
   int unsigned port_index;
   int unsigned source_port;
   int unsigned dest_port;
+  cpu_wrapper_path_e path;
+  cpu_wrapper_port_e source_cpuw_port;
+  cpu_wrapper_port_e dest_cpuw_port;
   int unsigned data_width;
   int unsigned original_id_width;
   bit downstream_id_contains_source;
+  string adapter_name;
 
   `uvm_object_utils(axi_crossbar_common_adapter_context)
 
   function new(string name = "axi_crossbar_common_adapter_context");
     super.new(name);
+    side = AXI_COMMON_UPSTREAM;
+    port_index = 0;
+    source_port = 0;
+    dest_port = 0;
+    path = CPUW_PATH_CPU_AXI_TO_AXI_HUB;
+    source_cpuw_port = CPUW_PORT_CPU_AXI;
+    dest_cpuw_port = CPUW_PORT_AXI_HUB;
     data_width = `AXI_CROSSBAR_DATA_WIDTH;
     original_id_width = 8;
+    downstream_id_contains_source = 0;
+    adapter_name = "UNKNOWN";
   endfunction
 endclass
 
@@ -258,3 +271,65 @@ class axi_crossbar_svt_axi_common_adapter extends axi_crossbar_common_adapter;
   endfunction
 endclass
 `endif
+
+typedef axi_crossbar_common_adapter_context cpu_wrapper_adapter_context;
+typedef axi_crossbar_common_adapter cpu_wrapper_base_adapter;
+
+class cpu_wrapper_dummy_common_adapter extends cpu_wrapper_base_adapter;
+  `uvm_object_utils(cpu_wrapper_dummy_common_adapter)
+
+  function new(string name = "cpu_wrapper_dummy_common_adapter");
+    super.new(name);
+  endfunction
+
+  virtual function void convert(
+    uvm_object protocol_tr,
+    axi_crossbar_common_adapter_context ctx,
+    ref axi_crossbar_common_transaction result[$]
+  );
+    cpu_wrapper_dummy_transaction tr;
+    axi_crossbar_common_transaction common_tr;
+    int unsigned byte_count;
+    bit has_byte_en;
+
+    result.delete();
+    if (!$cast(tr, protocol_tr)) begin
+      `uvm_error(get_type_name(), "protocol transaction is not cpu_wrapper_dummy_transaction")
+      return;
+    end
+
+    byte_count = ctx.data_width / 8;
+    if (byte_count == 0)
+      byte_count = 1;
+    if (byte_count > 128)
+      byte_count = 128;
+
+    has_byte_en = (tr.byte_en != '0);
+    for (int unsigned byte_idx = 0; byte_idx < byte_count; byte_idx++) begin
+      if (has_byte_en && !tr.byte_en[byte_idx])
+        continue;
+      if (!has_byte_en && byte_idx != 0)
+        continue;
+
+      common_tr = axi_crossbar_common_transaction::type_id::create(
+        $sformatf("dummy_common_byte%0d", byte_idx));
+      common_tr.access = tr.access;
+      common_tr.address = tr.address + byte_idx;
+      common_tr.data = tr.data[byte_idx*8 +: 8];
+      common_tr.status = tr.status;
+      common_tr.source_port = ctx.source_port;
+      common_tr.dest_port = ctx.dest_port;
+      common_tr.transaction_id = 0;
+      common_tr.beat_index = 0;
+      common_tr.byte_index = byte_idx;
+      common_tr.source_protocol = (tr.protocol == "") ? ctx.adapter_name : tr.protocol;
+      common_tr.valid_mask = axi_crossbar_common_transaction::CMP_ACCESS |
+                             axi_crossbar_common_transaction::CMP_ADDR |
+                             axi_crossbar_common_transaction::CMP_DATA |
+                             axi_crossbar_common_transaction::CMP_STATUS |
+                             axi_crossbar_common_transaction::CMP_SOURCE |
+                             axi_crossbar_common_transaction::CMP_DEST;
+      result.push_back(common_tr);
+    end
+  endfunction
+endclass
